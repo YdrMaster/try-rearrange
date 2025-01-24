@@ -1,0 +1,8 @@
+[package]
+name = "try-rearrange"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cuda = { git = "https://github.com/YdrMaster/cuda-driver", rev = "f3ffbcc" }
+ndarray-layout = "0.0.1"
