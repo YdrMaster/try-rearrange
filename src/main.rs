@@ -25,20 +25,28 @@ fn main() {
         let module = ctx.load(&ptx);
         let kernel = module.get_kernel(&name);
 
-        const D: usize = 1 << 14;
-        const E: usize = 1 << 3;
-        let mut src = ctx.malloc::<u8>(D * D * E);
-        let mut dst = ctx.malloc::<u8>(D * D * E);
+        const S_: usize = 31;
+        const E_: usize = 1;
+        const M_: usize = (S_ - E_ - 10) / 2;
+        const N_: usize = S_ - E_ - M_ - 10;
+
+        const S: usize = 1 << S_;
+        const E: usize = 1 << E_;
+        const M: usize = 1 << M_;
+        const N: usize = 1 << N_;
+
+        let mut src = ctx.malloc::<u8>(S);
+        let mut dst = ctx.malloc::<u8>(S);
 
         let dst = dst.as_mut_ptr();
         let src = src.as_ptr();
 
-        let mem = Arr::new_contiguous(&[D, D], BigEndian, E);
+        let mem = Arr::new_contiguous(&[M, N << 10], BigEndian, E);
 
-        for i in 0..=3 {
+        for i in 0..=4 {
             let step = 1 << i;
-            let src_ = mem.clone().slice(1, 0, step, D / 8);
-            let dst_ = mem.clone().slice(1, 0, 1, D / 8);
+            let src_ = mem.clone().slice(1, 0, step, (N << 10) >> 4);
+            let dst_ = mem.clone().slice(1, 0, 1, (N << 10) >> 4);
 
             let &[dst_sy, dst_sx] = dst_.strides() else {
                 unreachable!()
@@ -46,11 +54,16 @@ fn main() {
             let &[src_sy, src_sx] = src_.strides() else {
                 unreachable!()
             };
+            let dst_sy = dst_sy as i64;
+            let dst_sx = dst_sx as i64;
+            let src_sy = src_sy as i64;
+            let src_sx = src_sx as i64;
+            let unit = E as u8;
 
-            let params = cuda::params![dst, dst_sy, dst_sx, src, src_sy, src_sx];
+            let params = cuda::params![dst, dst_sy, dst_sx, src, src_sy, src_sx, unit];
             kernel.launch(
-                (D as c_uint, ((D / 8) >> 10) as c_uint),
-                1024,
+                (M as c_uint, (N >> 4) as c_uint),
+                1 << 10,
                 params.as_ptr(),
                 0,
                 None,
